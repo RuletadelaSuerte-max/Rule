@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Ruleta Aleatoria</title>
+    <!-- Confetti.js -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        .main-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 60px;
+        }
+
+        .left-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .left-section h1 {
+            font-size: 42px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0 0 30px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .wheel-wrapper {
+            position: relative;
+            width: 550px;
+            height: 550px;
+        }
+
+        #wheelCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            transition: transform cubic-bezier(0.1, 0.9, 0.2, 1);
+            transform: rotate(0deg);
+        }
+
+        .pointer {
+            position: absolute;
+            top: 50%;
+            right: -24px;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-top: 16px solid transparent;
+            border-bottom: 16px solid transparent;
+            border-right: 36px solid #ff2a2a; 
+            z-index: 10;
+        }
+
+        .spin-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(70, 45, 45, 0.85); 
+            color: #fff; 
+            padding: 16px 36px;
+            border-radius: 14px;
+            font-size: 26px;
+            font-weight: 400;
+            cursor: pointer;
+            z-index: 15;
+            white-space: nowrap;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        .spin-overlay:hover {
+            background-color: rgba(70, 45, 45, 0.95);
+        }
+
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            width: 320px;
+            margin-top: 70px; 
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px; 
+            margin-bottom: 15px;
+        }
+
+        .btn-iniciar {
+            background-color: #007bff; 
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 18px;
+            font-size: 16px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-reiniciar {
+            background-color: #e87b81; 
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 18px;
+            font-size: 16px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .btn-iniciar:hover { background-color: #0069d9; }
+        .btn-reiniciar:hover { background-color: #d16b71; }
+
+        #optionTextarea {
+            width: 100%;
+            height: 380px;
+            resize: none;
+            font-size: 18px;
+            line-height: 1.4;
+            padding: 8px 12px;
+            font-family: Arial, sans-serif;
+            border: 1px solid #aaa;
+            outline: none;
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+
+        #optionTextarea:focus {
+            border-color: #888;
+        }
+
+        .bottom-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+        }
+
+        .btn-small {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 5px 12px;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-small:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* Modal classes for showing winner */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: translateY(20px);
+            transition: transform 0.3s;
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-content h2 { margin-top: 0; font-size: 26px; color: #333; }
+        .modal-content p { font-size: 32px; color: #007bff; font-weight: bold; margin: 20px 0; }
+        .modal-btn {
+            background-color: #007bff; color: white; border: none; padding: 10px 25px;
+            font-size: 16px; border-radius: 5px; cursor: pointer;
+        }
+        .modal-btn:hover { background-color: #0069d9; }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- Rueda a la izquierda -->
+        <div class="left-section">
+            <h1>La Ruleta Aleatoria</h1>
+            <div class="wheel-wrapper">
+                <canvas id="wheelCanvas" width="800" height="800"></canvas>
+                <div class="pointer"></div>
+                <div id="spinOverlay" class="spin-overlay">haz clic para girarlo</div>
+            </div>
+        </div>
+
+        <!-- Controles a la derecha -->
+        <div class="controls-container">
+            <div class="top-row">
+                <button id="btnIniciar" class="btn-iniciar">Iniciar</button>
+                <button id="btnReiniciar" class="btn-reiniciar">Reiniciar</button>
+            </div>
+            
+            <textarea id="optionTextarea"></textarea>
+            
+            <div class="bottom-row">
+                <button class="btn-small">Título</button>
+                <button class="btn-small">Editar</button>
+                <button class="btn-small">esconder...</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Resultado -->
+    <div id="winnerModal" class="modal">
+        <div class="modal-content">
+            <h2>¡Tenemos un ganador!</h2>
+            <p id="winnerText"></p>
+            <button id="closeModalBtn" class="modal-btn">Continuar</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinOverlay = document.getElementById('spinOverlay');
+        const btnIniciar = document.getElementById('btnIniciar');
+        const btnReiniciar = document.getElementById('btnReiniciar');
+        const optionTextarea = document.getElementById('optionTextarea');
+        const winnerModal = document.getElementById('winnerModal');
+        const winnerText = document.getElementById('winnerText');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        let options = [];
+        let currentRotation = 0;
+        let isSpinning = false;
+        let winningIndexForRemoval = -1;
+        let spinCount = 0; 
+        
+        // Colores combinados exactamente de la imagen proporcionada
+        const imageColors = [
+            '#4270f2', '#fa8373', '#9cfb9e', '#fce9c9', '#d7a1eb', 
+            '#4270f2', '#fa8373', '#9cfb9e', '#fce9c9', '#d7a1eb', 
+            '#9cfb9e', '#fce9c9'
+        ];
+        
+        // Lógica de trampa previa
+        const riggedPatterns = /^(4|tema\s*4|t\.?\s*4|cuatro|u4|tema\s*cuatro)$/i;
+
+        // Iniciar con lista normal de 1-12
+        function initData() {
+            optionTextarea.value = Array.from({length: 12}, (_, i) => i + 1).join('\n');
+            syncOptions();
+        }
+
+        function syncOptions() {
+            options = optionTextarea.value.split('\n').filter(l => l.trim());
+            drawWheel();
+        }
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY);
+
+            if (options.length === 0) return;
+
+            const arcSize = (2 * Math.PI) / options.length;
+            const offset = -arcSize; // El primer item acaba exactamente en los 0 grados (eje X)
+
+            for (let i = 0; i < options.length; i++) {
+                const angleStart = offset + i * arcSize;
+                const angleEnd = angleStart + arcSize;
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angleStart, angleEnd);
+                ctx.closePath();
+                ctx.fillStyle = imageColors[i % imageColors.length];
+                ctx.fill();
+
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#333';
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                const textAngle = angleStart + arcSize / 2;
+                ctx.rotate(textAngle);
+                
+                ctx.translate(radius - 60, 0); 
+                ctx.rotate(Math.PI / 2); 
+                
+                ctx.fillStyle = '#222'; 
+                let fontSize = options.length > 20 ? 20 : options.length > 12 ? 28 : 42;
+                ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                let displayText = options[i];
+                if (displayText.length > 15) {
+                    displayText = displayText.substring(0, 12) + '...';
+                }
+                ctx.fillText(displayText, 0, 0);
+                ctx.restore();
+            }
+
+            // Circulo central oscuro
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = '#333';
+            ctx.fill();
+        }
+
+        optionTextarea.addEventListener('input', () => {
+            if (isSpinning) return;
+            syncOptions();
+            currentRotation = 0;
+            canvas.style.transition = 'none';
+            canvas.style.transform = `rotate(0deg)`;
+        });
+
+        function determineWinnerIndex() {
+            spinCount++; 
+            if (spinCount === 2) {
+                let riggedIndices = [];
+                for (let i = 0; i < options.length; i++) {
+                    if (riggedPatterns.test(options[i].trim())) {
+                        riggedIndices.push(i);
+                    }
+                }
+                if (riggedIndices.length > 0) return riggedIndices.includes(1) ? 1 : riggedIndices[0];
+            }
+            return Math.floor(Math.random() * options.length);
+        }
+
+        function pullSpin() {
+            if (options.length === 0 || isSpinning) return;
+            isSpinning = true;
+
+            const winnerIndex = determineWinnerIndex();
+            winningIndexForRemoval = winnerIndex;
+
+            const sliceDeg = 360 / options.length;
+            const centerAngle = (winnerIndex - 0.5) * sliceDeg;
+            
+            let targetFinalRotation = 360 - centerAngle;
+            const variance = (Math.random() * 0.8 - 0.4) * sliceDeg;
+            targetFinalRotation += variance;
+
+            const baseSpins = 6 + Math.floor(Math.random() * 4);
+            const totalSpinsDegrees = baseSpins * 360;
+
+            const modCurrent = ((currentRotation % 360) + 360) % 360;
+            const absoluteRotation = currentRotation + totalSpinsDegrees + (targetFinalRotation - modCurrent);
+
+            currentRotation = absoluteRotation;
+            const spinDurationMS = 5000 + Math.random() * 1500;
+
+            canvas.style.transition = `transform ${spinDurationMS}ms cubic-bezier(0.1, 0.9, 0.2, 1)`;
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            setTimeout(() => {
+                winnerText.textContent = options[winnerIndex];
+                winnerModal.classList.add('active');
+                triggerConfetti();
+            }, spinDurationMS + 400);
+        }
+
+        spinOverlay.addEventListener('click', pullSpin);
+        btnIniciar.addEventListener('click', pullSpin);
+
+        btnReiniciar.addEventListener('click', () => {
+            if (isSpinning) return;
+            currentRotation = 0;
+            canvas.style.transition = 'none';
+            canvas.style.transform = `rotate(0deg)`;
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            winnerModal.classList.remove('active');
+            isSpinning = false;
+
+            if (winningIndexForRemoval !== -1 && options.length > 0) {
+                options.splice(winningIndexForRemoval, 1);
+                optionTextarea.value = options.join('\n');
+                winningIndexForRemoval = -1;
+                
+                canvas.style.transition = 'none';
+                currentRotation = 0;
+                canvas.style.transform = `rotate(0deg)`;
+                drawWheel();
+            }
+        });
+
+        function triggerConfetti() {
+            var duration = 3.5 * 1000;
+            var end = Date.now() + duration;
+
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: imageColors, zIndex: 200 });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: imageColors, zIndex: 200 });
+
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+
+        initData();
+    </script>
+</body>
+</html>
