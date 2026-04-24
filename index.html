@@ -301,9 +301,7 @@
             '#9cfb9e', '#fce9c9'
         ];
 
-        // Lógica de trampa previa
-        const riggedPatterns = /(^4$|^tema\s*4$|^t\.?\s*4$|^cuatro$|^u4$|^tema\s*cuatro$|vanguardia|ismo)/i;
-
+      
         // Iniciar con lista normal de 1-12
         function initData() {
             optionTextarea.value = Array.from({ length: 12 }, (_, i) => i + 1).join('\n');
@@ -378,20 +376,7 @@
             canvas.style.transform = `rotate(0deg)`;
         });
 
-        function determineWinnerIndex() {
-            spinCount++;
-            if (spinCount === 2) {
-                let riggedIndices = [];
-                for (let i = 0; i < options.length; i++) {
-                    if (riggedPatterns.test(options[i].trim())) {
-                        riggedIndices.push(i);
-                    }
-                }
-                if (riggedIndices.length > 0) return riggedIndices.includes(1) ? 1 : riggedIndices[0];
-            }
-            return Math.floor(Math.random() * options.length);
-        }
-
+       
         function pullSpin() {
             if (options.length === 0 || isSpinning) return;
             isSpinning = true;
